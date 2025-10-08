@@ -14,9 +14,70 @@ datasource db {
   url      = "postgresql://postgres:postgres@localhost:5432/monster-mapper-manual"
 }
 
-// Models
-model Message {
-  id        Int       @id @default(autoincrement())
-  content   String
-  createdAt DateTime  @default(now())
+//////// Enums
+// contemplate standardization approach where unspecified
+enum EnemySize {
+  xs
+  sm
+  md
+  lg
+  xl
 }
+
+//////// Models
+model Message {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
+}
+
+// Systems :: represents a tabletop system like mork borg, old-school essentials, etc.
+model System {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  releaseYr  Int?
+  // refers to how many stats are involved (e.g. presence, str, agil, toughness)
+  // optional for now, need to think about enumerations for this before locking it down
+  // will become important come conversion-logic time
+  stat_count Int?
+  createdAt  DateTime @default(now())
+
+  // How do I stop Prisma from demanding these backlinks
+  conversionFrom SystemConversion[] @relation("FromSystem")
+  conversionTo   SystemConversion[] @relation("ToSystem")
+}
+
+model SystemConversion {
+  id           String @id @default(uuid()) @db.Uuid
+  fromSystemId String @db.Uuid
+  toSystemId   String @db.Uuid
+
+  fromSystem System @relation("FromSystem", fields: [fromSystemId], references: [id])
+  toSystem   System @relation("ToSystem", fields: [toSystemId], references: [id])
+}
+
+// Enemies :: represents a single-instance of an enemy
+// leaves specific values to another table
+model Enemy {
+  id             String    @id @default(uuid()) @db.Uuid
+  name           String
+  originSystemId String
+  description    String
+  size           EnemySize
+  createdAt      DateTime  @default(now())
+}
+
+// Enemy Stats :: Represents stat blocks in a certain system?
+// todo figure out best way to structure this
+model EnemyStats {
+  id     String @id @default(uuid()) @db.Uuid
+  system String @db.Uuid // incase we persist variants rather than recalc
+  health Int
+}
+
+// Attacks :: "they have a d4 dagger attack and a d6 fire attack"
+// todo figure out best way to structure this
+// model Attack {
+//   id String @id @default(uuid())
+//   enemy Enemy
+// }
